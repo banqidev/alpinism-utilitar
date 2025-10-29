@@ -94,6 +94,7 @@ export function Footer() {
                 <a
                   href="mailto:info.alpinism@gmail.com"
                   className="hover:text-primary transition-colors"
+                  data-testid="link-footer-email"
                 >
                   info.alpinism@gmail.com
                 </a>
@@ -102,6 +103,7 @@ export function Footer() {
                 <a
                   href="tel:+37368219898"
                   className="hover:text-primary transition-colors"
+                  data-testid="link-footer-phone"
                 >
                   +373 68 219 898
                 </a>

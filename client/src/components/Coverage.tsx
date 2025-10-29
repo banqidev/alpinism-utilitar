@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import mapUrl from '@assets/image_1761767133804.png';
+import { InteractiveMap } from './InteractiveMap';
 
 export function Coverage() {
   const { t } = useLanguage();
@@ -52,28 +52,17 @@ export function Coverage() {
             isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
           }`}
         >
-          <div className="relative rounded-md overflow-hidden border border-border shadow-lg bg-card p-8">
-            <img
-              src={mapUrl}
-              alt="Coverage Map - Romania and Moldova"
-              className="w-full h-auto"
-              data-testid="img-coverage-map"
-            />
-            <div className="absolute top-4 right-4 bg-background/95 backdrop-blur-sm border border-border rounded-md p-4 shadow-md">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-4 h-4 bg-primary/60 border-2 border-primary rounded-sm" />
-                <span className="text-sm font-medium text-foreground">
-                  {t.language === 'ro' ? 'Zonă de servicii' : 'Зона обслуживания'}
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {t.language === 'ro' ? 'România & Moldova' : 'Румыния и Молдова'}
-              </div>
-            </div>
+          <div className="relative rounded-md border border-border shadow-lg bg-card p-8">
+            <InteractiveMap />
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              {t.language === 'ro' 
+                ? 'Treceți cu mouse-ul peste regiuni pentru mai multe detalii' 
+                : 'Наведите курсор на регионы для получения дополнительной информации'}
+            </p>
           </div>
 
           <div className="mt-12 grid md:grid-cols-2 gap-6">
-            <div className="text-center p-6 bg-card rounded-md border border-border">
+            <div className="text-center p-6 bg-card rounded-md border border-border hover-elevate">
               <div className="text-3xl font-bold text-primary mb-2">România</div>
               <p className="text-muted-foreground">
                 {t.language === 'ro'
@@ -81,7 +70,7 @@ export function Coverage() {
                   : 'Полное обслуживание по всей стране'}
               </p>
             </div>
-            <div className="text-center p-6 bg-card rounded-md border border-border">
+            <div className="text-center p-6 bg-card rounded-md border border-border hover-elevate">
               <div className="text-3xl font-bold text-primary mb-2">Moldova</div>
               <p className="text-muted-foreground">
                 {t.language === 'ro'

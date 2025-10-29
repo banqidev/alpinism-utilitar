@@ -56,7 +56,7 @@ export function Hero() {
               size="lg"
               onClick={() => scrollToSection('services')}
               className="text-base px-8 h-12"
-              data-testid="button-hero-services"
+              data-testid="button-cta-services"
             >
               {t.hero.cta1}
             </Button>
@@ -65,7 +65,7 @@ export function Hero() {
               variant="outline"
               onClick={() => scrollToSection('contact')}
               className="text-base px-8 h-12 bg-background/50 backdrop-blur-sm"
-              data-testid="button-hero-contact"
+              data-testid="button-cta-contact"
             >
               {t.hero.cta2}
             </Button>
