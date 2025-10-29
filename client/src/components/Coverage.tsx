@@ -3,7 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { InteractiveMap } from './InteractiveMap';
 
 export function Coverage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +55,7 @@ export function Coverage() {
           <div className="relative rounded-md border border-border shadow-lg bg-card p-8">
             <InteractiveMap />
             <p className="text-center text-sm text-muted-foreground mt-6">
-              {t.language === 'ro' 
+              {language === 'ro' 
                 ? 'Treceți cu mouse-ul peste regiuni pentru mai multe detalii' 
                 : 'Наведите курсор на регионы для получения дополнительной информации'}
             </p>
@@ -65,7 +65,7 @@ export function Coverage() {
             <div className="text-center p-6 bg-card rounded-md border border-border hover-elevate">
               <div className="text-3xl font-bold text-primary mb-2">România</div>
               <p className="text-muted-foreground">
-                {t.language === 'ro'
+                {language === 'ro'
                   ? 'Servicii complete în toată țara'
                   : 'Полное обслуживание по всей стране'}
               </p>
@@ -73,7 +73,7 @@ export function Coverage() {
             <div className="text-center p-6 bg-card rounded-md border border-border hover-elevate">
               <div className="text-3xl font-bold text-primary mb-2">Moldova</div>
               <p className="text-muted-foreground">
-                {t.language === 'ro'
+                {language === 'ro'
                   ? 'Acoperire completă în toate regiunile'
                   : 'Полное покрытие во всех регионах'}
               </p>

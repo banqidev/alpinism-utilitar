@@ -2,7 +2,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import logoUrl from '@assets/image_1761767096960.png';
 
 export function Footer() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const currentYear = new Date().getFullYear();
 
   const scrollToSection = (id: string) => {
@@ -77,10 +77,10 @@ export function Footer() {
               {t.footer.services}
             </h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>{t.language === 'ro' ? 'Spălare geamuri' : 'Мойка окон'}</li>
-              <li>{t.language === 'ro' ? 'Curățare fațade' : 'Очистка фасадов'}</li>
-              <li>{t.language === 'ro' ? 'Reparații acoperișuri' : 'Ремонт крыш'}</li>
-              <li>{t.language === 'ro' ? 'Telecomunicații' : 'Телекоммуникации'}</li>
+              <li>{language === 'ro' ? 'Spălare geamuri' : 'Мойка окон'}</li>
+              <li>{language === 'ro' ? 'Curățare fațade' : 'Очистка фасадов'}</li>
+              <li>{language === 'ro' ? 'Reparații acoperișuri' : 'Ремонт крыш'}</li>
+              <li>{language === 'ro' ? 'Telecomunicații' : 'Телекоммуникации'}</li>
             </ul>
           </div>
 
