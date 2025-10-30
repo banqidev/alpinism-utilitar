@@ -51,7 +51,7 @@ export function Hero() {
           <p className="text-base md:text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
             {t.hero.description}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-5 justify-center items-center">
             <Button
               size="lg"
               onClick={() => scrollToSection('services')}
