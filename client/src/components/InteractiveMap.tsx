@@ -1,149 +1,237 @@
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-interface Region {
-  id: string;
+type RegionId = 'romania' | 'moldova';
+
+interface RegionMeta {
+  id: RegionId;
   name: string;
   nameRu: string;
-  path: string;
   cities: string[];
   citiesRu: string[];
 }
 
-const regions: Region[] = [
-  {
+const VIEWBOX = { w: 800, h: 500 };
+const PADDING = 5;
+const SCALE_SHRINK = 0.8;
+const LEFT_PERCENT = 0.48;
+const LEFT_GRAY = 'hsl(0 0% 65%)';
+const LEFT_EXTRA_PX = 10;
+const TOP_EXTRA_PX = 0;
+const BOTTOM_EXTRA_PX = 200;
+
+const META: Record<RegionId, RegionMeta> = {
+  romania: {
+    id: 'romania',
+    name: 'România',
+    nameRu: 'Румыния',
+    cities: ['București', 'Cluj-Napoca', 'Iași'],
+    citiesRu: ['Бухарест', 'Клуж-Напока', 'Яссы'],
+  },
+  moldova: {
     id: 'moldova',
     name: 'Moldova',
     nameRu: 'Молдова',
-    path: 'M 580 180 L 600 160 L 640 160 L 660 180 L 680 200 L 700 240 L 700 280 L 680 320 L 660 340 L 640 350 L 620 360 L 600 360 L 580 340 L 560 300 L 560 260 L 560 220 Z',
     cities: ['Chișinău', 'Bălți', 'Tiraspol'],
-    citiesRu: ['Кишинев', 'Бельцы', 'Тирасполь']
+    citiesRu: ['Кишинев', 'Бельцы', 'Тирасполь'],
   },
-  {
-    id: 'romania-north',
-    name: 'România Nord',
-    nameRu: 'Северная Румыния',
-    path: 'M 280 140 L 360 120 L 420 140 L 460 160 L 500 180 L 540 180 L 560 200 L 560 240 L 540 260 L 500 260 L 460 240 L 420 220 L 380 200 L 340 180 L 300 160 Z',
-    cities: ['Cluj-Napoca', 'Iași', 'Suceava'],
-    citiesRu: ['Клуж-Напока', 'Яссы', 'Сучава']
-  },
-  {
-    id: 'romania-center',
-    name: 'România Centru',
-    nameRu: 'Центральная Румыния',
-    path: 'M 260 180 L 340 180 L 380 200 L 420 220 L 460 240 L 500 260 L 540 260 L 540 300 L 500 320 L 460 320 L 420 300 L 380 280 L 340 260 L 300 240 L 260 220 Z',
-    cities: ['Brașov', 'Sibiu', 'Târgu Mureș'],
-    citiesRu: ['Брашов', 'Сибиу', 'Тыргу-Муреш']
-  },
-  {
-    id: 'romania-south',
-    name: 'România Sud',
-    nameRu: 'Южная Румыния',
-    path: 'M 260 240 L 300 240 L 340 260 L 380 280 L 420 300 L 460 320 L 500 320 L 540 340 L 540 380 L 500 400 L 460 400 L 420 380 L 380 360 L 340 340 L 300 320 L 260 300 Z',
-    cities: ['București', 'Craiova', 'Ploiești'],
-    citiesRu: ['Бухарест', 'Крайова', 'Плоешти']
-  },
-  {
-    id: 'romania-west',
-    name: 'România Vest',
-    nameRu: 'Западная Румыния',
-    path: 'M 120 200 L 180 180 L 220 180 L 260 200 L 260 240 L 260 280 L 220 300 L 180 300 L 140 280 L 120 260 L 100 220 Z',
-    cities: ['Timișoara', 'Arad', 'Oradea'],
-    citiesRu: ['Тимишоара', 'Арад', 'Орадя']
+};
+
+type BBox = { x: number; y: number; width: number; height: number };
+
+async function loadMainPath(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const txt = await res.text();
+    const doc = new DOMParser().parseFromString(txt, 'image/svg+xml');
+    const all = Array.from(doc.querySelectorAll('path')) as SVGPathElement[];
+    const candidates = all.filter((p) => {
+      const d = p.getAttribute('d');
+      if (!d) return false;
+      const op = p.getAttribute('opacity') || p.getAttribute('fill-opacity') || '1';
+      const id = (p.id || '').toLowerCase();
+      const cls = (p.getAttribute('class') || '').toLowerCase();
+      if (op === '0' || id.includes('background') || cls.includes('background')) return false;
+      return true;
+    });
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => b.getAttribute('d')!.length - a.getAttribute('d')!.length);
+    return candidates[0].getAttribute('d')!;
+  } catch {
+    return null;
   }
-];
+}
+
+function useCountryPaths() {
+  const [ro, setRo] = useState<string | null>(null);
+  const [md, setMd] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const rom = await loadMainPath('/maps/ro.svg');
+      if (isMounted) setRo(rom);
+      const mol = await loadMainPath('/maps/md.svg');
+      if (isMounted) setMd(mol);
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return { romania: ro, moldova: md };
+}
+
+function computeTransform(box: BBox | null) {
+  if (!box) return undefined;
+  const targetH = (VIEWBOX.h - 2 * PADDING) * SCALE_SHRINK;
+  const scale = targetH / box.height;
+  const centerX = VIEWBOX.w / 2;
+  const centerY = VIEWBOX.h / 2;
+  const x = centerX - (box.x + box.width / 2) * scale;
+  const y = centerY - (box.y + box.height / 2) * scale;
+  return `translate(${x}, ${y}) scale(${scale})`;
+}
+
+type ViewMode = 'moldova' | 'romania';
 
 export function InteractiveMap() {
-  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
   const { language } = useLanguage();
+  const [mode, setMode] = useState<ViewMode>('moldova');
+  const [hovered, setHovered] = useState<boolean>(false);
 
-  const getRegionData = (region: Region) => ({
-    name: language === 'ro' ? region.name : region.nameRu,
-    cities: language === 'ro' ? region.cities : region.citiesRu
-  });
+  const paths = useCountryPaths();
+  const activePath = mode === 'romania' ? paths.romania : paths.moldova;
+
+  const pathRef = useRef<SVGPathElement | null>(null);
+  const [box, setBox] = useState<BBox | null>(null);
+
+  useLayoutEffect(() => {
+    if (!pathRef.current) return;
+    try {
+      const b = pathRef.current.getBBox();
+      setBox({ x: b.x, y: b.y, width: b.width, height: b.height });
+    } catch {
+      setBox(null);
+    }
+  }, [activePath, mode]);
+
+  const t = computeTransform(box);
+  const leftWidth = Math.max(0, Math.min(1, LEFT_PERCENT)) * VIEWBOX.w + LEFT_EXTRA_PX;
+  const clipY = -TOP_EXTRA_PX;
+  const clipH = VIEWBOX.h + TOP_EXTRA_PX + BOTTOM_EXTRA_PX;
+
+  const fillColor = hovered ? 'url(#primaryGradient)' : 'hsla(186, 68%, 32%, 0.18)';
+  const strokeColor = 'hsl(186, 68%, 32%)';
+
+  const meta = META[mode];
+  const name = language === 'ro' ? meta.name : meta.nameRu;
+  const cities = language === 'ro' ? meta.cities : meta.citiesRu;
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto" data-testid="interactive-map">
-      <svg
-        viewBox="0 0 800 500"
-        className="w-full h-auto"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="hsl(186, 68%, 32%)" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="hsl(186, 68%, 32%)" stopOpacity="0.5" />
-          </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-            <feMerge>
-              <feMergeNode in="coloredBlur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        {regions.map((region) => (
-          <g key={region.id}>
-            <path
-              d={region.path}
-              fill={hoveredRegion === region.id ? 'url(#primaryGradient)' : 'hsla(186, 68%, 32%, 0.2)'}
-              stroke="hsl(186, 68%, 32%)"
-              strokeWidth={hoveredRegion === region.id ? '3' : '2'}
-              className="transition-all duration-300 cursor-pointer"
-              style={{
-                filter: hoveredRegion === region.id ? 'url(#glow)' : 'none'
-              }}
-              onMouseEnter={() => setHoveredRegion(region.id)}
-              onMouseLeave={() => setHoveredRegion(null)}
-              data-testid={`map-region-${region.id}`}
-            />
-            
-            {hoveredRegion === region.id && (
-              <text
-                x={region.id === 'moldova' ? 620 : region.id === 'romania-west' ? 160 : region.id === 'romania-south' ? 380 : 380}
-                y={region.id === 'moldova' ? 260 : region.id === 'romania-north' ? 180 : region.id === 'romania-center' ? 240 : region.id === 'romania-south' ? 340 : 240}
-                textAnchor="middle"
-                fill="hsl(186, 68%, 32%)"
-                fontSize="14"
-                fontWeight="600"
-                className="pointer-events-none animate-fade-in"
-              >
-                {getRegionData(region).name}
-              </text>
-            )}
-          </g>
-        ))}
-
-        <circle cx="380" cy="340" r="5" fill="hsl(0, 72%, 35%)" stroke="white" strokeWidth="2" data-testid="marker-bucuresti" />
-        <text x="380" y="365" textAnchor="middle" fontSize="12" fill="hsl(var(--foreground))" fontWeight="500">
-          {language === 'ro' ? 'București' : 'Бухарест'}
-        </text>
-        
-        <circle cx="620" cy="260" r="5" fill="hsl(0, 72%, 35%)" stroke="white" strokeWidth="2" data-testid="marker-chisinau" />
-        <text x="620" y="285" textAnchor="middle" fontSize="12" fill="hsl(var(--foreground))" fontWeight="500">
-          {language === 'ro' ? 'Chișinău' : 'Кишинев'}
-        </text>
-      </svg>
-
-      {hoveredRegion && (
-        <div className="absolute top-4 right-4 bg-card/95 backdrop-blur-sm border border-primary/30 rounded-md p-4 shadow-lg max-w-xs animate-fade-in" data-testid="map-tooltip">
-          <h4 className="font-semibold text-foreground mb-2">
-            {getRegionData(regions.find(r => r.id === hoveredRegion)!).name}
-          </h4>
-          <p className="text-sm text-muted-foreground mb-2">
-            {language === 'ro' ? 'Orașe principale:' : 'Основные города:'}
-          </p>
-          <ul className="text-sm text-foreground space-y-1">
-            {getRegionData(regions.find(r => r.id === hoveredRegion)!).cities.map((city, idx) => (
-              <li key={idx} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                {city}
-              </li>
-            ))}
-          </ul>
+      <div className="relative w-full max-w-4xl mx-auto" data-testid="interactive-map">
+        <div className="mb-3 flex justify-end">
+          <div className="inline-flex rounded-xl border border-primary/30 bg-card/80 backdrop-blur px-1 py-1 shadow-sm">
+            {(['moldova', 'romania'] as ViewMode[]).map((m) => {
+              const active = mode === m;
+              const label =
+                  m === 'moldova'
+                      ? language === 'ro'
+                          ? 'Moldova'
+                          : 'Молдова'
+                      : language === 'ro'
+                          ? 'România'
+                          : 'Румыния';
+              return (
+                  <button
+                      key={m}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setMode(m)}
+                      className={[
+                        'px-3 py-1.5 text-sm rounded-lg transition-colors',
+                        active ? 'bg-primary text-primary-foreground shadow' : 'text-foreground hover:bg-primary/10',
+                      ].join(' ')}
+                  >
+                    {label}
+                  </button>
+              );
+            })}
+          </div>
         </div>
-      )}
-    </div>
+
+        <svg
+            key={`${mode}-${activePath?.length ?? 0}`}
+            viewBox={`0 0 ${VIEWBOX.w} ${VIEWBOX.h}`}
+            className="w-full h-auto"
+            xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="hsl(186, 68%, 32%)" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="hsl(186, 68%, 32%)" stopOpacity="0.5" />
+            </linearGradient>
+
+            <clipPath id="leftClip" clipPathUnits="userSpaceOnUse">
+              <rect x="0" y={clipY} width={leftWidth} height={clipH} />
+            </clipPath>
+          </defs>
+
+          {activePath && (
+              <>
+                <path
+                    ref={pathRef}
+                    d={activePath}
+                    transform={t}
+                    fill={fillColor}
+                    stroke="none"
+                    onMouseEnter={() => setHovered(true)}
+                    onMouseLeave={() => setHovered(false)}
+                />
+                {mode === 'romania' && (
+                    <path
+                        d={activePath}
+                        transform={t}
+                        fill={LEFT_GRAY}
+                        clipPath="url(#leftClip)"
+                        stroke="none"
+                        pointerEvents="none"
+                    />
+                )}
+                <path
+                    d={activePath}
+                    transform={t}
+                    fill="none"
+                    stroke={strokeColor}
+                    strokeWidth={2}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                />
+              </>
+          )}
+        </svg>
+
+        {hovered && (
+            <div
+                className="absolute top-52 right-20 bg-card/95 backdrop-blur-sm border border-primary/30 rounded-md p-4 shadow-lg max-w-xs animate-fade-in"
+                data-testid="map-tooltip"
+            >
+              <h4 className="font-semibold text-foreground mb-2">{name}</h4>
+              <p className="text-sm text-muted-foreground mb-2">
+                {language === 'ro' ? 'Orașe principale:' : 'Основные города:'}
+              </p>
+              <ul className="text-sm text-foreground space-y-1">
+                {cities.map((city, idx) => (
+                    <li key={idx} className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-primary rounded-full" />
+                      {city}
+                    </li>
+                ))}
+              </ul>
+            </div>
+        )}
+      </div>
   );
 }

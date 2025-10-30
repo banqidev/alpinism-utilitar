@@ -1,5 +1,5 @@
 import { useLanguage } from '@/contexts/LanguageContext';
-import logoUrl from '@assets/image_1761767096960.png';
+import logoUrl from '@assets/img.png';
 
 export function Footer() {
   const { t, language } = useLanguage();
